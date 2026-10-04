@@ -1,0 +1,92 @@
+name: Deploy Quartz site to GitHub Pages
+
+on:
+  push:
+    branches:
+      - v5
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+
+      - name: Cache Quartz plugins
+        uses: actions/cache@v5
+        with:
+          path: .quartz/plugins
+          key: ${{ runner.os }}-plugins-${{ hashFiles('quartz.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-plugins-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Quartz plugins
+        run: npx quartz plugin install
+
+      # Поиск по умолчанию показывает только 8 результатов (numSearchResults = 8 в плагине).
+      # Поднимаем лимит до 200, чтобы находились все заметки.
+      - name: Raise search results limit
+        run: |
+          set -e
+          patched=0
+          for f in $(find node_modules/@quartz-community/search .quartz/plugins -path '*search*' -name '*.js' -not -name '*.map' 2>/dev/null); do
+            if grep -qE '[,;{ ][A-Za-z_$][A-Za-z0-9_$]*=8,[A-Za-z_$][A-Za-z0-9_$]*=5,' "$f"; then
+              sed -i -E 's/([,;{ ])([A-Za-z_$][A-Za-z0-9_$]*)=8,([A-Za-z_$][A-Za-z0-9_$]*)=5,/\1\2=200,\3=5,/' "$f"
+              echo "patched $f"
+              patched=$((patched+1))
+            fi
+          done
+          for f in $(find .quartz/plugins -path '*search*' -name 'search.inline.ts' 2>/dev/null); do
+            sed -i 's/const numSearchResults = 8;/const numSearchResults = 200;/' "$f"
+            echo "patched $f"
+            patched=$((patched+1))
+          done
+          echo "files patched: $patched"
+          if [ "$patched" -eq 0 ]; then echo "::warning::search limit patch did not match any file"; fi
+
+      # Убираем ФИО пациента и родственников из заметок перед сборкой.
+      # Меняется только копия в CI; исходные файлы в репозитории не затрагиваются.
+      - name: Remove personal names from content
+        run: python3 scripts/scrub_names.py scrub content
+
+      - name: Build Quartz
+        run: npx quartz build
+
+      # Если имя всё же попало в собранный сайт (включая поиск и RSS), сборка падает и сайт не публикуется.
+      - name: Verify no personal names in built site
+        run: python3 scripts/scrub_names.py check public
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
