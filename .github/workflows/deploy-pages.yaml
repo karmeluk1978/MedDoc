@@ -68,6 +68,12 @@ jobs:
       - name: Remove personal names from content
         run: python3 scripts/scrub_names.py scrub content
 
+      # На статическом сайте Dataview не работает: блоки ```dataview и ```dataviewjs
+      # заменяем обычными таблицами, собранными из frontmatter заметок (тоже только в копии в CI).
+      # Нераспознанные блоки остаются как есть, предупреждения видны в логе шага.
+      - name: Convert Dataview blocks to static tables
+        run: node scripts/gen-dataview.mjs content
+
       - name: Build Quartz
         run: npx quartz build
 
