@@ -63,6 +63,12 @@ jobs:
           echo "files patched: $patched"
           if [ "$patched" -eq 0 ]; then echo "::warning::search limit patch did not match any file"; fi
 
+      # Слова, помеченные в заметках как {!текст!}, заменяем на [скрыто].
+      # Идёт первым, до остальных обработок; меняется только копия в CI.
+      # Если где-то осталась незакрытая метка, шаг падает и сайт не публикуется.
+      - name: Redact marked words
+        run: python3 scripts/redact_marked.py redact content
+
       # Убираем ФИО пациента и родственников из заметок перед сборкой.
       # Меняется только копия в CI; исходные файлы в репозитории не затрагиваются.
       - name: Remove personal names from content
