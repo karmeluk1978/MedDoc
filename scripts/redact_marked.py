@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
 """
-Заменяет слова, выделенные в заметках как ==текст==, на [скрыто].
+Заменяет слова, помеченные в заметках как {!текст!}, на [скрыто].
 
 Работает по КОПИИ в рабочей папке CI (исходные файлы в git не меняются).
-Выделенный текст нигде не выводится: в логах только числа и пути файлов.
+Помеченный текст нигде не выводится: в логах только числа и пути файлов.
 
-  python scripts/redact_marked.py redact content   # заменить ==...== на [скрыто]
+  python scripts/redact_marked.py redact content   # заменить {!...!} на [скрыто]
 
-Правила:
-  - выделение может занимать несколько строк, но не пересекает пустую строку
-    (границу абзаца), чтобы одиночный «==» не скрыл полстраницы;
-  - блоки кода (```...```, ~~~...~~~) и `инлайн-код` не трогаем:
-    там «==» это оператор сравнения, а не выделение;
-  - одиночный «==» без пары вне кода не скрывается, о нём выводится
-    предупреждение (::warning::) с путём файла.
+Метка может занимать несколько строк. Если после замены в файле остались
+одиночные «{!» или «!}» (забытая закрывающая метка), скрипт завершается с
+ошибкой, и сайт не публикуется: иначе текст после незакрытой метки остался бы виден.
 """
 import re
 import sys
 from pathlib import Path
 
-MARK = re.compile(r"==(?!=)((?:(?!\n[ \t]*\n).)+?)(?<!=)==", re.S)
-CODE = re.compile(r"```.*?```|~~~.*?~~~|`[^`\n]+`", re.S)
+MARK = re.compile(r"\{!.+?!\}", re.S)
+LEFTOVER = re.compile(r"\{!|!\}")
 REPLACEMENT = "[скрыто]"
 EXT = {".md", ".canvas", ".base"}
 
@@ -39,42 +35,29 @@ def write(p: Path, text: str):
         f.write(text)
 
 
-def redact_text(t: str):
-    """Возвращает (новый текст, число замен, остался ли одиночный '==' вне кода)."""
-    out = []
-    pos = 0
-    count = 0
-    stray = False
-    for m in list(CODE.finditer(t)) + [None]:
-        end = m.start() if m else len(t)
-        seg, k = MARK.subn(REPLACEMENT, t[pos:end])
-        count += k
-        if "==" in seg:
-            stray = True
-        out.append(seg)
-        if m:
-            out.append(m.group(0))
-            pos = m.end()
-    return "".join(out), count, stray
-
-
 def redact(root: Path) -> int:
     files = 0
     total = 0
+    broken = []
     for p in root.rglob("*"):
         if not p.is_file() or p.suffix.lower() not in EXT:
             continue
         t = read(p)
         if t is None:
             continue
-        new, n, stray = redact_text(t)
+        new, n = MARK.subn(REPLACEMENT, t)
         if n:
             write(p, new)
             files += 1
             total += n
-        if stray:
-            print(f"::warning::redact: одиночный '==' без пары (не скрыт) в файле: {p}")
+        if LEFTOVER.search(new):
+            broken.append(p)
     print(f"redact: файлов изменено: {files}; замен: {total}")
+    if broken:
+        for p in broken:
+            print(f"redact: незакрытая метка в файле: {p}")
+        print("redact: исправьте метки, сборка остановлена")
+        return 1
     return 0
 
 
