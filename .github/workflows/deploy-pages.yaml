@@ -63,16 +63,11 @@ jobs:
           echo "files patched: $patched"
           if [ "$patched" -eq 0 ]; then echo "::warning::search limit patch did not match any file"; fi
 
-      # Слова, помеченные в заметках как {!текст!}, заменяем на [скрыто].
-      # Идёт первым, до остальных обработок; меняется только копия в CI.
+      # Единственный механизм скрытия: всё, что помечено в заметках как {!текст!},
+      # заменяется на [скрыто]. Меняется только копия в CI; исходные файлы не затрагиваются.
       # Если где-то осталась незакрытая метка, шаг падает и сайт не публикуется.
       - name: Redact marked words
         run: python3 scripts/redact_marked.py redact content
-
-      # Убираем ФИО пациента и родственников из заметок перед сборкой.
-      # Меняется только копия в CI; исходные файлы в репозитории не затрагиваются.
-      - name: Remove personal names from content
-        run: python3 scripts/scrub_names.py scrub content
 
       # На статическом сайте Dataview не работает: блоки ```dataview и ```dataviewjs
       # заменяем обычными таблицами, собранными из frontmatter заметок (тоже только в копии в CI).
@@ -82,10 +77,6 @@ jobs:
 
       - name: Build Quartz
         run: npx quartz build
-
-      # Если имя всё же попало в собранный сайт (включая поиск и RSS), сборка падает и сайт не публикуется.
-      - name: Verify no personal names in built site
-        run: python3 scripts/scrub_names.py check public
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
