@@ -19,17 +19,17 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
       - name: Setup Node
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
 
       - name: Cache Quartz plugins
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: .quartz/plugins
           key: ${{ runner.os }}-plugins-${{ hashFiles('quartz.lock.json') }}
@@ -68,6 +68,12 @@ jobs:
       - name: Remove personal names from content
         run: python3 scripts/scrub_names.py scrub content
 
+      # На статическом сайте Dataview не работает: блоки ```dataview и ```dataviewjs
+      # заменяем обычными таблицами, собранными из frontmatter заметок (тоже только в копии в CI).
+      # Нераспознанные блоки остаются как есть, предупреждения видны в логе шага.
+      - name: Convert Dataview blocks to static tables
+        run: node scripts/gen-dataview.mjs content
+
       - name: Build Quartz
         run: npx quartz build
 
@@ -76,7 +82,7 @@ jobs:
         run: python3 scripts/scrub_names.py check public
 
       - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: public
 
@@ -89,4 +95,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

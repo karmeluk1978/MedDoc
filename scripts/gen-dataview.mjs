@@ -160,6 +160,7 @@ const valuesOf = (n) => (n.fm.values && typeof n.fm.values === "object" ? n.fm.v
 /* ---------- dataviewjs ---------- */
 
 function handleDataviewJs(code) {
+  if (code.includes("file.tasks")) return taskMatrix(code)
   if (code.includes("p.antibiogram")) return antibiogram(code)
   if (code.includes("consilium_doctors")) return consilium(code)
   if (code.includes("нейтральный_жир")) return neutralFat(code)
@@ -200,6 +201,53 @@ function handleDataviewJs(code) {
     )
   }
   throw new Error("незнакомая структура запроса")
+}
+
+/**
+ * Матрица «дата × задача» по ежедневным заметкам с чек-листами (например, приём препаратов):
+ * колонки — названия задач (текст до « — »), ячейка ✅ если отмечена, затем «Принято» (выполнено/всего)
+ * и «Примечания» (текст после заголовка «## Заметки»).
+ */
+function taskMatrix(code) {
+  const srcM = code.match(/dv\.pages\(\s*(['"])([\s\S]*?)\1\s*\)/)
+  if (!srcM) throw new Error("не найден dv.pages(...)")
+  const dailyOnly = /\^\\d\{4\}-\\d\{2\}-\\d\{2\}\$/.test(code) && code.includes("p.file.name")
+  const whereCount = (code.match(/\.where\(/g) ?? []).length
+  if (whereCount > (dailyOnly ? 1 : 0)) throw new Error("незнакомое условие .where(...)")
+  let pages = pagesFromSource(srcM[2])
+  if (dailyOnly) pages = pages.filter((n) => /^\d{4}-\d{2}-\d{2}$/.test(n.stem))
+  pages.sort((a, b) => (a.stem < b.stem ? -1 : a.stem > b.stem ? 1 : 0))
+
+  const TASK_RE = /^[ \t]*[-*+][ \t]+\[(.)\][ \t]+(.+?)[ \t]*$/
+  const tasksOf = (n) =>
+    n.raw
+      .replace(/^\uFEFF/, "")
+      .replace(FM_RE, "")
+      .split(/\r?\n/)
+      .map((l) => l.match(TASK_RE))
+      .filter(Boolean)
+      .map((m) => ({ completed: m[1] !== " ", text: m[2] }))
+  const nameOf = (t) => t.text.split(" — ")[0]
+
+  const names = []
+  const perPage = pages.map((n) => {
+    const tasks = tasksOf(n)
+    for (const t of tasks) if (!names.includes(nameOf(t))) names.push(nameOf(t))
+    return { n, tasks }
+  })
+  const cell = (x) => (isEmpty(x) ? "—" : String(x).replace(/\|/g, "\\|"))
+  const rows = perPage.map(({ n, tasks }) => {
+    const m = {}
+    let done = 0
+    for (const t of tasks) {
+      m[nameOf(t)] = t.completed ? "✅" : null
+      if (t.completed) done++
+    }
+    const mm = n.raw.match(/## Заметки[ \t]*\r?\n([\s\S]*)$/)
+    const note = mm ? mm[1].trim().replace(/\r?\n+/g, "<br>") : ""
+    return [dateLink(n), ...names.map((x) => cell(m[x])), `${done}/${tasks.length}`, cell(note)]
+  })
+  return table(["Дата", ...names, "Принято", "Примечания"], rows)
 }
 
 /** Сводная таблица АЛТ/АСТ/ЩФ: возраст, короткие названия лабораторий, жирным значения вне нормы. */
