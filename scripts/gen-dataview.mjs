@@ -128,7 +128,8 @@ function dateLink(n) {
 
 function table(headers, rows) {
   if (!rows.length) return "_Нет данных._"
-  const esc = (h) => h.replace(/\|/g, "\\|")
+  // не экранируем повторно уже экранированный | (например, в вики-ссылке с датой)
+  const esc = (h) => h.replace(/(?<!\\)\|/g, "\\|")
   return [
     `| ${headers.map(esc).join(" | ")} |`,
     `|${headers.map(() => "---").join("|")}|`,
@@ -342,6 +343,37 @@ function neutralFat(code) {
   )
 }
 
+/* Полный перечень антибиотиков дисбактериоза (как в заметках и в Obsidian). */
+const ABX_CANON = [
+  "Азитромицин", "Азтреонам", "Амикацин", "Амоксициллин/клавулановая кислота", "Ампициллин", "Ванкомицин",
+  "Гентамицин", "Доксициклин", "Дорипенем", "Имипенем", "Кларитромицин", "Клиндамицин", "Котримоксазол",
+  "Левофлоксацин", "Линезолид", "Меропенем", "Миноциклин", "Нитрофурантоин", "Норфлоксацин", "Оксациллин",
+  "Офлоксацин", "Пенициллин", "Пиперациллин", "Пиперациллин/тазобактам", "Рифампицин", "Тейкопланин",
+  "Тикарциллин/клавуланат", "Тобрамицин", "Хлорамфеникол", "Цефепим", "Цефокситин", "Цефоперазон",
+  "Цефоперазон/сульбактам", "Цефотаксим", "Цефтазидим", "Цефтриаксон", "Цефуроксим", "Эритромицин",
+]
+// разные написания одного препарата в frontmatter заметок
+const ABX_ALIAS = {
+  бензилпенициллин: "пенициллин",
+  фурадонин: "нитрофурантоин",
+  "тикарциллин/клавулановая кислота": "тикарциллин/клавуланат",
+  "триметоприм/сульфаметоксазол": "котримоксазол",
+}
+const abxNorm = (s) => {
+  const n = String(s)
+    .toLowerCase()
+    .replace(/ё/g, "е")
+    .replace(/\s*\(.*?\)\s*/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+  return ABX_ALIAS[n] ?? n
+}
+const ABX_CANON_SET = new Set(ABX_CANON.map(abxNorm))
+
+/**
+ * Антибиотикограммы как в Obsidian: строки — антибиотики (полный перечень, «—» если не тестировался),
+ * столбцы — даты анализов, без колонки «Учреждение». Препараты вне перечня добавляются в конец.
+ */
 function antibiogram(code) {
   const srcM = code.match(/dv\.pages\(\s*(['"])([\s\S]*?)\1\s*\)/)
   const orderM = code.match(/const order = \[([^\]]*)\]/)
@@ -356,18 +388,29 @@ function antibiogram(code) {
   for (const bact of order) {
     const rows = pages.filter((n) => isObj(n.fm.antibiogram[bact]))
     if (!rows.length) continue
-    const abx = [...new Set(rows.flatMap((n) => Object.keys(n.fm.antibiogram[bact])))].sort((a, b) =>
-      a.localeCompare(b, "ru"),
-    )
+
+    // результаты каждого анализа: нормализованное название препарата -> значение
+    const data = rows.map((n) => {
+      const d = {}
+      for (const [k, v] of Object.entries(n.fm.antibiogram[bact])) d[abxNorm(k)] = v
+      return d
+    })
+    const extra = new Map()
+    for (const n of rows) {
+      for (const k of Object.keys(n.fm.antibiogram[bact])) {
+        if (!ABX_CANON_SET.has(abxNorm(k)) && !extra.has(abxNorm(k))) extra.set(abxNorm(k), k)
+      }
+    }
+    const abx = [
+      ...ABX_CANON.map((name) => [name, abxNorm(name)]),
+      ...[...extra.entries()].sort((a, b) => a[1].localeCompare(b[1], "ru")).map(([key, name]) => [name, key]),
+    ]
+
     parts.push(
       `#### ${bact}\n\n` +
         table(
-          ["Дата", "Учреждение", ...abx],
-          rows.map((n) => [
-            dateLink(n),
-            show(n.fm.institution),
-            ...abx.map((a) => legend[n.fm.antibiogram[bact][a]] ?? "—"),
-          ]),
+          ["Антибиотик", ...rows.map((n) => dateLink(n))],
+          abx.map(([name, key]) => [name, ...data.map((d) => legend[d[key]] ?? "—")]),
         ),
     )
   }
