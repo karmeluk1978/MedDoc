@@ -110,6 +110,37 @@ const searchSortScript = `
   })()
 `
 
+// Широкие таблицы: шапка таблицы закреплена у верха окна, но у таблицы, которая шире колонки
+// с контентом, нужна горизонтальная прокрутка. Прокрутка и закрепление к окну несовместимы,
+// поэтому такие таблицы помечаются классом table-wide и прокручиваются в собственном окне
+// (стили — в custom.scss). Остальные таблицы прокручиваются вместе со страницей.
+const tableWideScript = `
+  ;(function () {
+    function mark() {
+      var boxes = document.querySelectorAll("article .table-container")
+      for (var i = 0; i < boxes.length; i++) {
+        var box = boxes[i]
+        var table = box.querySelector(":scope > table")
+        if (!table) continue
+        var wide = table.offsetWidth > box.clientWidth + 1
+        box.classList.toggle("table-wide", wide)
+      }
+    }
+
+    var timer
+    function schedule() {
+      clearTimeout(timer)
+      timer = setTimeout(mark, 100)
+    }
+
+    mark()
+    document.addEventListener("nav", function () { mark(); setTimeout(mark, 300) })
+    window.addEventListener("resize", schedule)
+    window.addEventListener("load", mark)
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(mark)
+  })()
+`
+
 export default (() => {
   const Head: QuartzComponent = ({
     cfg,
@@ -213,7 +244,7 @@ export default (() => {
     )
   }
 
-  Head.afterDOMLoaded = sidebarResizeScript + "\n" + searchSortScript
+  Head.afterDOMLoaded = sidebarResizeScript + "\n" + searchSortScript + "\n" + tableWideScript
 
   return Head
 }) satisfies QuartzComponentConstructor
