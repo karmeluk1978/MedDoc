@@ -191,6 +191,27 @@ article table thead th {
   border-bottom: none;
 }
 
+// Вертикальный текст во всех шапках таблиц: читается снизу вверх.
+// sideways-lr поворачивает текст без transform, поэтому закрепление шапки и линия под ней
+// не ломаются. Там, где sideways-lr не поддерживается, текст идёт сверху вниз (vertical-rl).
+.table-container > table thead th,
+article table thead th {
+  writing-mode: vertical-rl;
+  white-space: nowrap;
+  min-width: 2.4rem;
+  padding: 0.6rem 0.35rem;
+  text-align: start;
+  vertical-align: bottom;
+  line-height: 1.3;
+}
+
+@supports (writing-mode: sideways-lr) {
+  .table-container > table thead th,
+  article table thead th {
+    writing-mode: sideways-lr;
+  }
+}
+
 // Десктоп и планшет: обёртка не создаёт прокрутку — шапка прилипает к верху окна
 // и держится до конца таблицы.
 @media all and not ($mobile) {
