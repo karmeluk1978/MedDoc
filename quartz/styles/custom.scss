@@ -194,14 +194,16 @@ article table thead th {
 // Вертикальный текст во всех шапках таблиц: читается снизу вверх.
 // sideways-lr поворачивает текст без transform, поэтому закрепление шапки и линия под ней
 // не ломаются. Там, где sideways-lr не поддерживается, текст идёт сверху вниз (vertical-rl).
+// Выравнивание по центру: text-align — вдоль строки (по высоте шапки),
+// vertical-align — поперёк строки (по ширине столбца).
 .table-container > table thead th,
 article table thead th {
   writing-mode: vertical-rl;
   white-space: nowrap;
   min-width: 2.4rem;
   padding: 0.6rem 0.35rem;
-  text-align: start;
-  vertical-align: bottom;
+  text-align: center;
+  vertical-align: middle;
   line-height: 1.3;
 }
 
