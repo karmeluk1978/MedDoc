@@ -236,6 +236,38 @@ article table thead th {
   }
 }
 
+// Панель тегов на главной (таблицы, в ячейках которых ссылки на страницы тегов):
+// шапка с буквой обычная горизонтальная, не закреплена; столбцы делят всю ширину поровну,
+// отступы между столбцами и от краёв страницы минимальные.
+.table-container:has(td a[href*="/tags/"]) {
+  margin: 0;
+
+  & > table {
+    width: 100%;
+    margin: 0.25rem 0;
+    table-layout: fixed;
+    border-collapse: collapse;
+
+    thead th {
+      position: static;
+      writing-mode: horizontal-tb;
+      text-align: center;
+      vertical-align: bottom;
+      white-space: normal;
+      padding: 0.1rem 0.2rem;
+      box-shadow: none;
+      border-bottom: 1px solid var(--gray);
+    }
+
+    td {
+      padding: 0.1rem 0.2rem;
+      vertical-align: top;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+  }
+}
+
 // Десктоп и планшет: обёртка не создаёт прокрутку — шапка прилипает к верху окна
 // и держится до конца таблицы.
 @media all and not ($mobile) {
