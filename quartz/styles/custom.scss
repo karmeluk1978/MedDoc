@@ -58,20 +58,20 @@ h2.page-title {
   display: none !important;
 }
 
+// Кнопка «Домой» устроена так же, как кнопка переключателя темы (.darkmode):
+// те же размер и отступы, значок позиционируется по центру абсолютно — поэтому
+// обе кнопки стоят на одной линии.
 .home-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 auto;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+  background: none;
+  border: none;
   width: 20px;
   height: 20px;
   margin: 0 10px;
-  padding: 0;
+  text-align: center;
   color: var(--darkgray);
-  background: none;
-  border: none;
-  text-decoration: none;
-  cursor: pointer;
   transition: color 0.15s ease;
 
   &:hover {
@@ -79,9 +79,11 @@ h2.page-title {
   }
 
   svg {
-    display: block;
+    position: absolute;
     width: 20px;
     height: 20px;
+    top: calc(50% - 10px);
+    left: calc(50% - 10px);
   }
 }
 
@@ -272,7 +274,7 @@ article table thead th {
 // Панель тегов на главной (таблицы, в ячейках которых ссылки на страницы тегов):
 // шапка с буквой обычная горизонтальная, не закреплена; столбцы делят всю ширину поровну,
 // отступы между столбцами и от краёв страницы минимальные.
-.table-container:has(td a[href*="/tags/"]) {
+.table-container:has(td a[href*="tags/"]) {
   margin: 0;
 
   & > table {
