@@ -161,6 +161,7 @@ const valuesOf = (n) => (n.fm.values && typeof n.fm.values === "object" ? n.fm.v
 /* ---------- dataviewjs ---------- */
 
 function handleDataviewJs(code) {
+  if (code.includes("tag-panel")) return tagPanel()
   if (code.includes("file.tasks")) return taskMatrix(code)
   if (code.includes("p.antibiogram")) return antibiogram(code)
   if (code.includes("consilium_doctors")) return consilium(code)
@@ -202,6 +203,18 @@ function handleDataviewJs(code) {
     )
   }
   throw new Error("незнакомая структура запроса")
+}
+
+/**
+ * Панель всех тегов (в «Индекс_анализов»): теги из frontmatter всех заметок по алфавиту,
+ * каждый — ссылка на страницу тега (Quartz делает её из #тег).
+ */
+function tagPanel() {
+  const seen = new Set()
+  for (const n of notes) for (const t of n.tags) seen.add(t)
+  const tags = [...seen].sort((a, b) => a.localeCompare(b, "ru"))
+  if (!tags.length) return "_Нет тегов._"
+  return tags.map((t) => `#${t}`).join(" · ")
 }
 
 /**
