@@ -14,8 +14,8 @@ configuration:
     - private
     - templates
     - .obsidian
-    # заметки, имя которых начинается с «_Заметка», не публикуются
-    - "**/_[Зз]аметка*"
+    # служебные заметки и папки, имя которых начинается с «_», не публикуются
+    - "**/_*"
   theme:
     fontOrigin: googleFonts
     cdnCaching: true
