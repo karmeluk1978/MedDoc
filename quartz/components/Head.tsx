@@ -155,6 +155,45 @@ const tableWideScript = `
   })()
 `
 
+// Кнопка «Домой» вместо кнопки режима чтения: ссылка на главную страницу, стоит в панели
+// инструментов рядом с переключателем темы (кнопка режима чтения скрыта в custom.scss).
+// Адрес главной считается от текущей страницы (data-slug у body), поэтому работает на любой
+// глубине и при любом baseUrl. Кнопка добавляется заново после каждого перехода по сайту.
+const homeButtonScript = `
+  ;(function () {
+    function rootHref() {
+      var slug = document.body.getAttribute("data-slug") || ""
+      var depth = slug === "" || slug === "index" ? 0 : slug.split("/").length - 1
+      if (slug.endsWith("/index")) depth = slug.split("/").length - 1
+      return depth === 0 ? "./" : new Array(depth + 1).join("../")
+    }
+
+    function mount() {
+      var anchor = document.querySelector(".darkmode") || document.querySelector(".readermode")
+      if (!anchor || !anchor.parentElement) return
+      var existing = document.querySelector(".home-button")
+      var href = rootHref()
+      if (existing) {
+        existing.setAttribute("href", href)
+        return
+      }
+      var a = document.createElement("a")
+      a.className = "home-button internal"
+      a.setAttribute("href", href)
+      a.setAttribute("aria-label", "На главную")
+      a.setAttribute("title", "На главную")
+      a.innerHTML =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" fill="none" ' +
+        'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>'
+      anchor.parentElement.insertBefore(a, anchor.nextSibling)
+    }
+
+    mount()
+    document.addEventListener("nav", mount)
+  })()
+`
+
 export default (() => {
   const Head: QuartzComponent = ({
     cfg,
@@ -258,7 +297,8 @@ export default (() => {
     )
   }
 
-  Head.afterDOMLoaded = sidebarResizeScript + "\n" + searchSortScript + "\n" + tableWideScript
+  Head.afterDOMLoaded =
+    sidebarResizeScript + "\n" + searchSortScript + "\n" + tableWideScript + "\n" + homeButtonScript
 
   return Head
 }) satisfies QuartzComponentConstructor
