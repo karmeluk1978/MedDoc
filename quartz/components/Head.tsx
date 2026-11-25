@@ -156,9 +156,12 @@ const tableWideScript = `
 `
 
 // Кнопка «Домой» вместо кнопки режима чтения: стоит в панели инструментов рядом с переключателем
-// темы (кнопка режима чтения скрыта в custom.scss). Это такой же <button>, как у переключателя темы,
-// поэтому выравнивается с ним одинаково. Адрес главной считается от текущей страницы (data-slug у body),
-// поэтому работает на любой глубине и при любом baseUrl. Кнопка добавляется заново после каждого перехода.
+// темы (кнопка режима чтения скрыта в custom.scss). Адрес главной считается от текущей страницы
+// (data-slug у body), поэтому работает на любой глубине и при любом baseUrl. Кнопка добавляется
+// заново после каждого перехода по сайту.
+// Выравнивание: значок «Домой» сравнивается по высоте с видимым значком переключателя темы и при
+// расхождении сдвигается на разницу (transform: translateY), так что обе кнопки стоят на одной линии
+// независимо от того, как именно устроена панель инструментов.
 const homeButtonScript = `
   ;(function () {
     function rootHref() {
@@ -173,6 +176,34 @@ const homeButtonScript = `
       else window.location.href = url.href
     }
 
+    // центр по вертикали первого видимого значка внутри кнопки
+    function iconCenter(btn) {
+      var svgs = btn.querySelectorAll("svg")
+      for (var i = 0; i < svgs.length; i++) {
+        var r = svgs[i].getBoundingClientRect()
+        if (r.width > 0 && r.height > 0) return r.top + r.height / 2
+      }
+      return null
+    }
+
+    function align() {
+      var b = document.querySelector(".home-button")
+      var dm = document.querySelector(".darkmode")
+      if (!b || !dm) return
+      b.style.transform = ""
+      var target = iconCenter(dm)
+      var mine = iconCenter(b)
+      if (target === null || mine === null) return
+      var d = target - mine
+      if (Math.abs(d) > 0.5) b.style.transform = "translateY(" + d.toFixed(2) + "px)"
+    }
+
+    function alignSoon() {
+      align()
+      requestAnimationFrame(align)
+      setTimeout(align, 300)
+    }
+
     function mount() {
       var anchor = document.querySelector(".darkmode") || document.querySelector(".readermode")
       if (!anchor || !anchor.parentElement) return
@@ -180,6 +211,7 @@ const homeButtonScript = `
       var existing = document.querySelector(".home-button")
       if (existing) {
         existing.setAttribute("data-href", href)
+        alignSoon()
         return
       }
       var b = document.createElement("button")
@@ -194,10 +226,15 @@ const homeButtonScript = `
         '<path d="M3 11.5 12 4l9 7.5"/><path d="M5 10v10h5v-6h4v6h5V10"/></svg>'
       b.addEventListener("click", function () { go(b) })
       anchor.parentElement.insertBefore(b, anchor.nextSibling)
+      alignSoon()
     }
 
     mount()
     document.addEventListener("nav", mount)
+    window.addEventListener("resize", alignSoon)
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignSoon)
+    // переключение темы меняет, какой значок показан у кнопки темы
+    document.addEventListener("themechange", alignSoon)
   })()
 `
 
