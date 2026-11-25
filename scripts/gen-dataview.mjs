@@ -17,6 +17,9 @@
  * (папка content в репозитории Quartz), а не на самом хранилище Obsidian.
  * Нераспознанные блоки остаются как есть, о них выводится предупреждение.
  *
+ * Заметки, имя которых начинается с «_Заметка», не публикуются (см. ignorePatterns в
+ * quartz.config.yaml) и в таблицы и панель тегов тоже не попадают.
+ *
  * Зависимость: пакет `yaml` (уже есть в зависимостях Quartz).
  */
 import fs from "node:fs"
@@ -44,6 +47,7 @@ if (fs.existsSync(path.join(contentDir, ".obsidian")) && !flags.has("--force")) 
 /* ---------- чтение заметок ---------- */
 
 const SKIP_DIRS = new Set(["private", "templates"]) // как в ignorePatterns Quartz
+const SKIP_NAME = /^_заметка/i // заметки «_Заметка…» не публикуются
 const FM_RE = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/
 
 function walk(dir) {
@@ -53,7 +57,7 @@ function walk(dir) {
     const p = path.join(dir, e.name)
     if (e.isDirectory()) {
       if (!SKIP_DIRS.has(e.name)) out.push(...walk(p))
-    } else if (e.isFile() && e.name.toLowerCase().endsWith(".md")) {
+    } else if (e.isFile() && e.name.toLowerCase().endsWith(".md") && !SKIP_NAME.test(e.name)) {
       out.push(p)
     }
   }
@@ -208,8 +212,8 @@ function handleDataviewJs(code) {
 /**
  * Панель тегов на главной странице: теги из frontmatter всех заметок, сгруппированные по первой букве
  * (по алфавиту). Каждая буква — столбец: вверху буква, под ней её теги; 7 букв в одной таблице.
- * Каждый тег — ссылка на страницу тега (Quartz делает её из #тег; перед тегом нужен пробел
- * или начало ячейки, поэтому теги в ячейке разделены «<br> »).
+ * Теги выводятся обычными ссылками на страницы тегов, а не как #тег: иначе Quartz посчитал бы их
+ * тегами самой главной страницы, и она попадала бы в результаты поиска по любому тегу.
  */
 function tagPanel() {
   const seen = new Set()
@@ -219,7 +223,7 @@ function tagPanel() {
   for (const t of [...seen].sort((a, b) => a.localeCompare(b, "ru"))) {
     const letter = t[0].toUpperCase()
     if (!byLetter.has(letter)) byLetter.set(letter, [])
-    byLetter.get(letter).push(`#${t}`)
+    byLetter.get(letter).push(`[${t}](tags/${t.replace(/\s+/g, "-")})`)
   }
   const letters = [...byLetter.keys()]
   const parts = []
