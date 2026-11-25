@@ -114,30 +114,44 @@ const searchSortScript = `
 // с контентом, нужна горизонтальная прокрутка. Прокрутка и закрепление к окну несовместимы,
 // поэтому такие таблицы помечаются классом table-wide и прокручиваются в собственном окне
 // (стили — в custom.scss). Остальные таблицы прокручиваются вместе со страницей.
+// Сначала читаем размеры всех таблиц, потом меняем классы — так браузер делает один пересчёт
+// раскладки, а не по одному на таблицу; запуски объединяются через requestAnimationFrame.
 const tableWideScript = `
   ;(function () {
+    var queued = false
     function mark() {
+      queued = false
       var boxes = document.querySelectorAll("article .table-container")
+      if (!boxes.length) return
+      var states = []
       for (var i = 0; i < boxes.length; i++) {
-        var box = boxes[i]
-        var table = box.querySelector(":scope > table")
-        if (!table) continue
-        var wide = table.offsetWidth > box.clientWidth + 1
-        box.classList.toggle("table-wide", wide)
+        var table = boxes[i].firstElementChild
+        if (!table || table.tagName !== "TABLE") continue
+        states.push([boxes[i], table.offsetWidth > boxes[i].clientWidth + 1])
+      }
+      for (var j = 0; j < states.length; j++) {
+        if (states[j][0].classList.contains("table-wide") !== states[j][1]) {
+          states[j][0].classList.toggle("table-wide", states[j][1])
+        }
       }
     }
 
-    var timer
     function schedule() {
-      clearTimeout(timer)
-      timer = setTimeout(mark, 100)
+      if (queued) return
+      queued = true
+      requestAnimationFrame(mark)
     }
 
-    mark()
-    document.addEventListener("nav", function () { mark(); setTimeout(mark, 300) })
-    window.addEventListener("resize", schedule)
-    window.addEventListener("load", mark)
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(mark)
+    var timer
+    function scheduleResize() {
+      clearTimeout(timer)
+      timer = setTimeout(schedule, 200)
+    }
+
+    schedule()
+    document.addEventListener("nav", schedule)
+    window.addEventListener("resize", scheduleResize)
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(schedule)
   })()
 `
 
