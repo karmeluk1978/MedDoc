@@ -216,6 +216,8 @@ plugins:
       group: toolbar
   - source: "@quartz-community/breadcrumbs"
     enabled: true
+    options:
+      rootName: Главная
     layout:
       position: beforeBody
       priority: 5
