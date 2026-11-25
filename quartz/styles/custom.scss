@@ -52,6 +52,39 @@ h2.page-title {
   display: none !important;
 }
 
+// Кнопка режима чтения скрыта: вместо неё кнопка «Домой» (.home-button, её добавляет скрипт
+// в quartz/components/Head.tsx в панель инструментов рядом с переключателем темы).
+.readermode {
+  display: none !important;
+}
+
+.home-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  margin: 0 10px;
+  padding: 0;
+  color: var(--darkgray);
+  background: none;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color 0.15s ease;
+
+  &:hover {
+    color: var(--secondary);
+  }
+
+  svg {
+    display: block;
+    width: 20px;
+    height: 20px;
+  }
+}
+
 // Поле поиска растягивается вместе с левой панелью:
 // снимаем только ограничение максимальной ширины
 .sidebar.left {
