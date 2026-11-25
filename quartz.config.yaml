@@ -7,7 +7,8 @@ configuration:
   # Аналитика отключена: Plausible отправляет запросы при каждом открытии страницы,
   # а данных владельцу они не дают (аккаунта нет), зато лишний раз ждут внешний сервер
   analytics: null
-  locale: en-US
+  # Язык интерфейса сайта (поиск, Проводник, хлебные крошки, подписи и т.д.)
+  locale: ru-RU
   baseUrl: karmeluk1978.github.io/MedDoc
   ignorePatterns:
     - private
