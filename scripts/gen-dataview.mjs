@@ -206,15 +206,28 @@ function handleDataviewJs(code) {
 }
 
 /**
- * Панель всех тегов (в «Индекс_анализов»): теги из frontmatter всех заметок по алфавиту,
- * каждый — ссылка на страницу тега (Quartz делает её из #тег).
+ * Панель тегов на главной странице: теги из frontmatter всех заметок, сгруппированные по первой букве
+ * (по алфавиту). Каждая буква — столбец: вверху буква, под ней её теги; 7 букв в одной таблице.
+ * Каждый тег — ссылка на страницу тега (Quartz делает её из #тег; перед тегом нужен пробел
+ * или начало ячейки, поэтому теги в ячейке разделены «<br> »).
  */
 function tagPanel() {
   const seen = new Set()
   for (const n of notes) for (const t of n.tags) seen.add(t)
-  const tags = [...seen].sort((a, b) => a.localeCompare(b, "ru"))
-  if (!tags.length) return "_Нет тегов._"
-  return tags.map((t) => `#${t}`).join(" · ")
+  if (!seen.size) return "_Нет тегов._"
+  const byLetter = new Map()
+  for (const t of [...seen].sort((a, b) => a.localeCompare(b, "ru"))) {
+    const letter = t[0].toUpperCase()
+    if (!byLetter.has(letter)) byLetter.set(letter, [])
+    byLetter.get(letter).push(`#${t}`)
+  }
+  const letters = [...byLetter.keys()]
+  const parts = []
+  for (let i = 0; i < letters.length; i += 7) {
+    const chunk = letters.slice(i, i + 7)
+    parts.push(table(chunk, [chunk.map((l) => byLetter.get(l).join("<br> "))]))
+  }
+  return parts.join("\n\n")
 }
 
 /**
